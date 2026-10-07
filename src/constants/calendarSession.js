@@ -5,7 +5,7 @@ const defaultCalendarSession = [
   { day: 3, name: 'Miércoles', calendar: { startTime: '08:00', endTime: '18:00' } },
   { day: 4, name: 'Jueves', calendar: { startTime: '08:00', endTime: '18:00' } },
   { day: 5, name: 'Viernes', calendar: { startTime: '08:00', endTime: '18:00' } },
-  { day: 6, name: 'Sábado', calendar: { startTime: '08:00', endTime: '18:00' } },
+  { day: 6, name: 'Sábado', calendar: { startTime: '08:00', endTime: '18:00' } }
 ];
 
 export function createDefaultCalendarSession() {
