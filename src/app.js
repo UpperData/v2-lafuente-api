@@ -6,12 +6,13 @@ import routes from './routes/index.js';
 
 const app = express();
 const port = Number(process.env.APP_PORT || 3000);
+const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:7800';
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('APP_PORT debe ser un puerto válido entre 1 y 65535.');
 }
 
-app.use(cors());
+app.use(cors({ origin: frontendOrigin, credentials: true }));
 app.use(express.json());
 app.use('/api', routes);
 app.get('/health', (_request, response) => {
