@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import cors from 'cors';
 import express from 'express';
 import { connectDatabase, sequelize } from './config/database.js';
 import routes from './routes/index.js';
@@ -10,6 +11,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('APP_PORT debe ser un puerto válido entre 1 y 65535.');
 }
 
+app.use(cors());
 app.use(express.json());
 app.use('/api', routes);
 app.get('/health', (_request, response) => {
