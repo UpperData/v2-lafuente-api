@@ -20,14 +20,14 @@ export async function requireAdmin(request, response, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const account = await models.Account.findByPk(payload.sub, {
       attributes: ['id', 'isActived'],
-      include: [{ model: models.Role, as: 'role', attributes: ['name'] }],
+      include: [{ model: models.Role, as: 'role', attributes: ['name','id'] }],
     });
 
     if (!account || !account.isActived) {
       return warningResponse(response, 'La sesión no es válida.', {}, 401);
     }
-
-    if (account.role?.id !== 1) {
+   
+    if (account.role.id !== 1) {
       return warningResponse(response, 'No tienes permiso para crear usuarios.', {}, 403);
     }
 

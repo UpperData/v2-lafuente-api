@@ -29,7 +29,7 @@ export async function login(request, response) {
                 {
                     model: models.Role, 
                     as: 'role',
-                    attributes: ['id', 'name'],
+                    attributes: ['id', 'name','menu'],
                 },
             ],
 		});
@@ -58,7 +58,7 @@ export async function login(request, response) {
 				id: account.id,
 				username: account.email,
 				person: account.person,
-                role: account.role ? { id: account.role.id, name: account.role.name } : null,
+                role: account.role ? { id: account.role.id, name: account.role.name, menu: account.role.menu } : null,
 				
 			},
 		});
