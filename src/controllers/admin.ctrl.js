@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { models } from '../config/database.js';
 import { createDefaultCalendarSession } from '../constants/calendarSession.js';
+import { sendNewUserCredentialsEmail } from '../services/email.service.js';
 import {
   errorResponse,
   successResponse,
@@ -21,10 +22,6 @@ export async function createUser(request, response) {
 
   if (typeof phoneNumber !== 'string' || !phoneNumber.trim()) {
     return warningResponse(response, 'phoneNumber es obligatorio.', {}, 400);
-  }
-
-  if (typeof password !== 'string' || password.length < 8) {
-    return warningResponse(response, 'La contraseña debe tener al menos 8 caracteres.', {}, 400);
   }
 
   if (!person || typeof person !== 'object' || Array.isArray(person)) {
@@ -49,8 +46,10 @@ export async function createUser(request, response) {
     if (!role) {
       return warningResponse(response, 'El rol indicado no existe.', {}, 400);
     }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
+    // genera conraseña random y la encripta
+    const randomPassword = Math.random().toString(36).slice(-8);
+    const passwordToUse = password || randomPassword;
+    const hashedPassword = await bcrypt.hash(passwordToUse, 12);
     const account = await models.Account.create({
       email: normalizedEmail,
       phoneNumber: phoneNumber.trim(),
@@ -60,6 +59,21 @@ export async function createUser(request, response) {
       calendarSession: createDefaultCalendarSession(),
     });
 
+    try {
+      await sendNewUserCredentialsEmail({
+        to: account.email,
+        password: passwordToUse,
+      });
+    } catch (error) {
+      console.error('Usuario creado, pero no fue posible enviar el correo:', error.message);
+      return errorResponse(
+        response,
+        'El usuario fue creado, pero no se pudo enviar el correo con sus credenciales.',
+        { id: account.id, email: account.email, emailSent: false },
+        502,
+      );
+    }
+
     return successResponse(response, 'Usuario creado correctamente.', {
       id: account.id,
       email: account.email,
@@ -68,6 +82,7 @@ export async function createUser(request, response) {
       roleId: account.roleId,
       calendarSession: account.calendarSession,
       isActived: account.isActived,
+      emailSent: true,
     }, 201);
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -178,7 +193,12 @@ export async function updateUser(request, response) {
   }
 
   if (Object.hasOwn(body, 'calendarSession')) {
-    if (!body.calendarSession || typeof body.calendarSession !== 'object' || Array.isArray(body.calendarSession)) {
+    console.log('calendarSession:', body.calendarSession);
+     // body.calendarSession es un arreglo de objetos, cada objeto debe tener las propiedades: day (entero del 0 al 6), name (string) y calendar (objeto con startTime y endTime)
+    if (!Array.isArray(body.calendarSession)) {
+      return warningResponse(response, 'calendarSession debe ser un arreglo de objetos.', {}, 400);
+    }
+    if (!body.calendarSession) {
       return warningResponse(response, 'calendarSession debe ser un objeto.', {}, 400);
     }
     updates.calendarSession = body.calendarSession;
