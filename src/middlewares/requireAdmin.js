@@ -28,7 +28,7 @@ export async function requireAdmin(request, response, next) {
     }
    
     if (account.role.id !== 1) {
-      return warningResponse(response, 'No tienes permiso para crear usuarios.', {}, 403);
+      return warningResponse(response, 'No tienes permiso para realizar esta acción.', {}, 403);
     }
 
     return next();
