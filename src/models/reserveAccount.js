@@ -11,7 +11,10 @@ export default function defineReserveAccount(sequelize) {
     phoneNumber: { type: DataTypes.STRING(20) },
     address: { type: DataTypes.STRING(255) },
     isActived: { type: DataTypes.BOOLEAN, defaultValue: true },
-    currentBalance: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
+    currentBalanceCashUSD: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
+    currentBalanceTransferUSD: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
+    currentBalanceCashVES: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
+    currentBalanceTransferVES: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
   }, {
     tableName: 'reserveAccounts',
     timestamps: true,

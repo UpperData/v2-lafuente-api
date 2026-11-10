@@ -36,6 +36,7 @@ export async function requireAuth(request, response, next) {
       return warningResponse(response, 'La sesión no es válida.', {}, 401);
     }
 
+    request.auth = { accountId: account.id };
     return next();
   } catch (error) {
     console.error('Error al validar la sesión:', error.message);

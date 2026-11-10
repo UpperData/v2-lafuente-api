@@ -4,6 +4,7 @@ import userRouter from './admin.routes.js';
 import bankAccountsRouter from './bankAccounts.routes.js';
 import reserveAccountsRouter from './reserveAccounts.routes.js';
 import cashRouter from './cash.routes.js';
+import transactionsRouter from './transactions.routes.js';
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use('/users', userRouter);
 router.use('/bank-accounts', bankAccountsRouter);
 router.use('/clients', reserveAccountsRouter);
 router.use('/cash', cashRouter);
+router.use('/transactions', transactionsRouter);
 
 export default router;
