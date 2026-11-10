@@ -64,7 +64,7 @@ function validateClientFields(body, { creating = false } = {}) {
 }
 
 export async function listClients(_request, response) {
-  const { isActived } = _request.query;
+  const { isActived,id } = _request.query;
   try {
     const clients = await models.ReserveAccount.findAll({
       attributes: [
@@ -85,7 +85,10 @@ export async function listClients(_request, response) {
         'updatedAt',
       ],
       order: [['id', 'ASC']],
-      where: isActived !== undefined ? { isActived: isActived === 'true' } : {},
+      where: {
+        ...(isActived !== undefined ? { isActived: isActived === 'true' } : {}),
+        ...(id !== undefined ? { id: Number(id) } : {}),
+      },
     });
 
     return successResponse(response, 'Clientes listados correctamente.', clients);
