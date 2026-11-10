@@ -161,25 +161,7 @@ export async function registerTransaction(request, response) {
       const transaction = await models.Transaction.create(transactionData, {
         transaction: databaseTransaction,
       });
-      await reserveAccount.reload({
-        attributes: [
-          'currentBalanceCashUSD',
-          'currentBalanceTransferUSD',
-          'currentBalanceCashVES',
-          'currentBalanceTransferVES',
-        ],
-        transaction: databaseTransaction,
-      });
-
-      return {
-        transaction,
-        balances: {
-          currentBalanceCashUSD: reserveAccount.currentBalanceCashUSD,
-          currentBalanceTransferUSD: reserveAccount.currentBalanceTransferUSD,
-          currentBalanceCashVES: reserveAccount.currentBalanceCashVES,
-          currentBalanceTransferVES: reserveAccount.currentBalanceTransferVES,
-        },
-      };
+      return transaction;
     });
 
     if (result.error) {

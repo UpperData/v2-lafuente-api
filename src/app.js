@@ -13,7 +13,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 app.use(cors({ origin: frontendOrigin, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
 app.use('/api', routes);
 app.get('/health', (_request, response) => {
   response.json({ status: 'ok' });
