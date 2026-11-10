@@ -33,6 +33,61 @@ function normalizeAmount(value) {
   return `${whole}.${fraction.padEnd(2, '0')}`;
 }
 
+function parseTransactionFile(value) {
+  if (value === undefined || value === null || value === '') {
+    return { file: undefined };
+  }
+
+  let file;
+  if (Buffer.isBuffer(value)) {
+    file = value;
+  } else if (
+    value
+    && typeof value === 'object'
+    && value.type === 'Buffer'
+    && Array.isArray(value.data)
+  ) {
+    if (value.data.length > 8 * 1024 * 1024) {
+      return { error: 'El comprobante no puede superar los 8 MB.', statusCode: 413 };
+    }
+    if (!value.data.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
+      return { error: 'file.data debe contener bytes enteros entre 0 y 255.' };
+    }
+    file = Buffer.from(value.data);
+  } else if (typeof value === 'string' && /^\\x/i.test(value)) {
+    const hex = value.slice(2);
+    if (!/^(?:[0-9a-f]{2})*$/i.test(hex)) {
+      return { error: 'file no contiene una representación hexadecimal bytea válida.' };
+    }
+    file = Buffer.from(hex, 'hex');
+  } else if (typeof value === 'string') {
+    const dataUrlMatch = value.match(/^data:[^;,]+;base64,([\s\S]*)$/i);
+    const base64 = (dataUrlMatch ? dataUrlMatch[1] : value).replace(/\s/g, '');
+    if (
+      !base64
+      || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)
+      || base64.length % 4 === 1
+    ) {
+      return { error: 'file debe contener bytea hexadecimal, Base64 o una URL de datos Base64.' };
+    }
+
+    file = Buffer.from(base64, 'base64');
+    if (file.toString('base64').replace(/=+$/, '') !== base64.replace(/=+$/, '')) {
+      return { error: 'file no contiene una cadena Base64 válida.' };
+    }
+  } else {
+    return {
+      error: 'file debe contener bytea hexadecimal, Base64 o un objeto Buffer serializado.',
+    };
+  }
+
+  if (file.length > 8 * 1024 * 1024) {
+    return { error: 'El comprobante no puede superar los 8 MB.', statusCode: 413 };
+  }
+
+  return { file };
+}
+
 function isDateOnly(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -274,6 +329,16 @@ export async function registerTransaction(request, response) {
     return warningResponse(response, 'payDate debe tener el formato YYYY-MM-DD.', {}, 400);
   }
 
+  const parsedFile = parseTransactionFile(body.file);
+  if (parsedFile.error) {
+    return warningResponse(
+      response,
+      parsedFile.error,
+      {},
+      parsedFile.statusCode ?? 400,
+    );
+  }
+
   try {
     const transactionData = Object.fromEntries(
       transactionFields
@@ -283,6 +348,11 @@ export async function registerTransaction(request, response) {
     transactionData.amountNeto = normalizeAmount(body.amountNeto);
     transactionData.amountBrute = normalizeAmount(body.amountBrute);
     transactionData.operatorId = request.auth.accountId;
+    if (parsedFile.file !== undefined) {
+      transactionData.file = parsedFile.file;
+    } else if (body.file === null) {
+      transactionData.file = null;
+    }
 
     const result = await sequelize.transaction(async (databaseTransaction) => {
       const reserveAccount = await models.ReserveAccount.findByPk(reserveAccountId, {
