@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { models, sequelize } from '../config/database.js';
 import {
   errorResponse,
@@ -38,6 +39,145 @@ function isDateOnly(value) {
   }
   const date = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
+function parsePositiveInteger(value) {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+    return null;
+  }
+  const parsedValue = Number(value);
+  return Number.isSafeInteger(parsedValue) ? parsedValue : null;
+}
+
+export async function listTransactions(request, response) {
+  const {
+    type,
+    isActived,
+    operator,
+    operatorId,
+    createdAtFrom,
+    createdAtTo,
+    page: pageParam = '1',
+    limit: limitParam = '50',
+  } = request.query;
+
+  const reserveAccountId = request.params.reserveAccountId;
+  const clientIdValue = parsePositiveInteger(reserveAccountId);
+  if (clientIdValue === null) {
+    return warningResponse(response, 'reserveAccountId debe ser un entero positivo.', {}, 400);
+  }
+
+  if (type !== undefined && !['input', 'output'].includes(type)) {
+    return warningResponse(response, 'type debe ser input o output.', {}, 400);
+  }
+
+  if (isActived !== undefined && !['true', 'false'].includes(isActived)) {
+    return warningResponse(response, 'isActived debe ser true o false.', {}, 400);
+  }
+
+  if (operator !== undefined && operatorId !== undefined && operator !== operatorId) {
+    return warningResponse(response, 'operator y operatorId no pueden tener valores distintos.', {}, 400);
+  }
+
+  const operatorValue = operator ?? operatorId;
+  const operatorIdValue = operatorValue === undefined
+    ? undefined
+    : parsePositiveInteger(operatorValue);
+  if (operatorValue !== undefined && operatorIdValue === null) {
+    return warningResponse(response, 'operator debe ser un entero positivo.', {}, 400);
+  }
+
+  if (createdAtFrom !== undefined && !isDateOnly(createdAtFrom)) {
+    return warningResponse(response, 'createdAtFrom debe tener el formato YYYY-MM-DD.', {}, 400);
+  }
+  if (createdAtTo !== undefined && !isDateOnly(createdAtTo)) {
+    return warningResponse(response, 'createdAtTo debe tener el formato YYYY-MM-DD.', {}, 400);
+  }
+  if (
+    createdAtFrom !== undefined
+    && createdAtTo !== undefined
+    && createdAtFrom > createdAtTo
+  ) {
+    return warningResponse(response, 'createdAtFrom no puede ser posterior a createdAtTo.', {}, 400);
+  }
+
+  const page = parsePositiveInteger(pageParam);
+  if (page === null) {
+    return warningResponse(response, 'page debe ser un entero positivo.', {}, 400);
+  }
+  const limit = parsePositiveInteger(limitParam);
+  if (limit === null || limit > 100) {
+    return warningResponse(response, 'limit debe ser un entero entre 1 y 100.', {}, 400);
+  }
+  if ((page - 1) * limit > Number.MAX_SAFE_INTEGER) {
+    return warningResponse(response, 'page está fuera del rango permitido.', {}, 400);
+  }
+
+  const where = {};
+  if (type !== undefined) where.type = type;
+  if (isActived !== undefined) where.isActived = isActived === 'true';
+  where.reserveAccountId = clientIdValue;
+  if (operatorIdValue !== undefined) where.operatorId = operatorIdValue;
+  if (createdAtFrom !== undefined || createdAtTo !== undefined) {
+    where.createdAt = {};
+    if (createdAtFrom !== undefined) {
+      where.createdAt[Op.gte] = new Date(`${createdAtFrom}T00:00:00.000Z`);
+    }
+    if (createdAtTo !== undefined) {
+      where.createdAt[Op.lte] = new Date(`${createdAtTo}T23:59:59.999Z`);
+    }
+  }
+
+  try {
+    const { count, rows } = await models.Transaction.findAndCountAll({
+      attributes: [
+        'id',
+        'amountNeto',
+        'amountBrute',
+        'reserveAccountId',
+        'type',
+        'currencyMoney',
+        'payData',
+        'reference',
+        'isPayConfirmed',
+        'operatorId',
+        'comissions',
+        'isActived',
+        'note',
+        'isComissionInMount',
+        'payDate',
+        'createdAt',
+        'updatedAt',
+      ],
+      where,
+      include: [
+        {
+          model: models.ReserveAccount,
+          as: 'reserveAccount',
+          attributes: ['id', 'documentId', 'firstName', 'lastName'],
+        },
+        {
+          model: models.Account,
+          as: 'operator',
+          attributes: ['id', 'email'],
+        },
+      ],
+      order: [['createdAt', 'DESC'], ['id', 'DESC']],
+      limit,
+      offset: (page - 1) * limit,
+      distinct: true,
+    });
+
+    return successResponse(response, 'Transacciones listadas correctamente.', {
+      transactions: rows,
+      total: count,
+      page,
+      limit,
+    });
+  } catch (error) {
+    console.error('Error al listar transacciones:', error.message);
+    return errorResponse(response, 'No fue posible listar las transacciones.', {}, 500);
+  }
 }
 
 export async function registerTransaction(request, response) {
