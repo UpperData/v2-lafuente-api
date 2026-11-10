@@ -5,7 +5,7 @@ export default function defineReserveAccount(sequelize) {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     documentId: { type: DataTypes.STRING(60) },
     firstName: { type: DataTypes.STRING(60) },
-    LastName: { type: DataTypes.STRING(60) },
+    lastName: { type: DataTypes.STRING(60) },
     isFamele: { type: DataTypes.BOOLEAN },
     email: { type: DataTypes.STRING(150) },
     phoneNumber: { type: DataTypes.STRING(20) },

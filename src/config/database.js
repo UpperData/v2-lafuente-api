@@ -33,6 +33,6 @@ export const sequelize = new Sequelize({
 
 export const models = initModels(sequelize);
 
-export async function connectDatabase() {
+export const connectDatabase = async () => {
   await sequelize.authenticate();
-}
+};
