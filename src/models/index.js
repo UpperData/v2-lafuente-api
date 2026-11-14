@@ -2,6 +2,7 @@ import defineAccount from './account.js';
 import defineBank from './bank.js';
 import defineBankAccount from './bankAccount.js';
 import defineBoxCash from './boxCash.js';
+import defineGlobalBalance from './globalBalance.js';
 import defineReserveAccount from './reserveAccount.js';
 import defineRole from './role.js';
 import defineTransaction from './transaction.js';
@@ -11,6 +12,7 @@ export function initModels(sequelize) {
 	const Bank = defineBank(sequelize);
 	const BankAccount = defineBankAccount(sequelize);
 	const BoxCash = defineBoxCash(sequelize);
+	const GlobalBalance = defineGlobalBalance(sequelize);
 	const ReserveAccount = defineReserveAccount(sequelize);
 	const Role = defineRole(sequelize);
 	const Transaction = defineTransaction(sequelize);
@@ -44,7 +46,16 @@ export function initModels(sequelize) {
 	});
 	ReserveAccount.hasMany(Transaction, { as: 'transactions', foreignKey: 'reserveAccountId' });
 
-	return { Account, Bank, BankAccount, BoxCash, ReserveAccount, Role, Transaction };
+	return {
+		Account,
+		Bank,
+		BankAccount,
+		BoxCash,
+		GlobalBalance,
+		ReserveAccount,
+		Role,
+		Transaction,
+	};
 }
 
 export default initModels;

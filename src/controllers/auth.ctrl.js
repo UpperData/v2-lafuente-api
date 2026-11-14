@@ -44,7 +44,10 @@ export async function login(request, response) {
 		}
 
 		const token = jwt.sign(
-			{ roleId: account.roleId },
+			{ 
+				roleId: account.roleId,
+				name: account.role ? account.role.name : null,
+			},
 			process.env.JWT_SECRET,
 			{
 				subject: String(account.id),

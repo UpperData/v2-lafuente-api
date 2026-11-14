@@ -15,7 +15,7 @@ export default function defineTransaction(sequelize) {
       allowNull: false,
     },
     currencyMoney: {
-      type: DataTypes.ENUM('Dolar', 'Bolivar'),
+      type: DataTypes.ENUM('Dolar', 'Bolivar','Euro'),
       allowNull: false,
     },
     payData: { type: DataTypes.JSONB },

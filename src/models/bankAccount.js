@@ -14,6 +14,11 @@ export default function defineBankAccount(sequelize) {
       },
     },
     isActived: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    currencyMoney: {
+      type: DataTypes.ENUM('Dolar', 'Bolivar','Euro'),
+      allowNull: false,
+      defaultValue: 'Dolar',
+    }
   }, {
     tableName: 'bankAccount',
     timestamps: true,

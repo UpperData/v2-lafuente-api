@@ -4,7 +4,7 @@ import { requireAdmin } from '../middlewares/requireAdmin.js';
 
 const userRouter = Router();
 
-userRouter.post('/', requireAdmin, createUser);
+userRouter.post('/',  createUser);
 userRouter.get('/', requireAdmin, listUsers);
 userRouter.put('/:id', requireAdmin, updateUser);
 userRouter.patch('/:id/status', requireAdmin, changeStatus);

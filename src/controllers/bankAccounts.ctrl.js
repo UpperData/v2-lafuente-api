@@ -28,6 +28,7 @@ export async function listBankAccounts(request, response) {
         'isActived',
         'createdAt',
         'updatedAt',
+        'currencyMoney',
       ],
       include: [{
         model: models.Bank,

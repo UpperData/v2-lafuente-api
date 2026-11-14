@@ -23,7 +23,7 @@ DROP FUNCTION IF EXISTS public.adjust_reserve_account_balance(
   integer, text, numeric, text, boolean
 );
 
-CREATE FUNCTION public.adjust_reserve_account_balance(
+CREATE OR REPLACE FUNCTION public.adjust_reserve_account_balance(
   p_reserve_account_id integer,
   p_currency text,
   p_amount numeric,
