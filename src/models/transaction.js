@@ -10,6 +10,13 @@ export default function defineTransaction(sequelize) {
       allowNull: false,
       references: { model: 'reserveAccounts', key: 'id' },
     },
+    goalId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'goals', key: 'id' },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+    },
     type: {
       type: DataTypes.ENUM('input', 'output'),
       allowNull: false,

@@ -6,7 +6,6 @@ export default function defineGlobalBalance(sequelize) {
     currencyMoney: {
       type: DataTypes.ENUM('Dolar', 'Bolivar', 'Euro'),
       allowNull: false,
-      unique: true,
     },
     currentBalanceCash: {
       type: DataTypes.DECIMAL(18, 2),
@@ -22,5 +21,6 @@ export default function defineGlobalBalance(sequelize) {
     tableName: 'globalBalances',
     timestamps: true,
     underscored: false,
+    indexes: [{ unique: true, fields: ['currencyMoney'] }],
   });
 }

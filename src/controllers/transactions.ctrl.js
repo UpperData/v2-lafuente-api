@@ -10,6 +10,7 @@ const transactionFields = [
   'amountNeto',
   'amountBrute',
   'reserveAccountId',
+  'goalId',
   'type',
   'currencyMoney',
   'payData',
@@ -104,6 +105,17 @@ function parsePositiveInteger(value) {
   return Number.isSafeInteger(parsedValue) ? parsedValue : null;
 }
 
+function parseOptionalPositiveInteger(value) {
+  if (
+    (typeof value !== 'string' && typeof value !== 'number')
+    || !/^[1-9]\d*$/.test(String(value))
+  ) {
+    return null;
+  }
+  const parsedValue = Number(value);
+  return Number.isSafeInteger(parsedValue) ? parsedValue : null;
+}
+
 export async function listTransactions(request, response) {
   const {
     type,
@@ -190,6 +202,7 @@ export async function listTransactions(request, response) {
         'amountNeto',
         'amountBrute',
         'reserveAccountId',
+        'goalId',
         'type',
         'currencyMoney',
         'payData',
@@ -215,6 +228,17 @@ export async function listTransactions(request, response) {
           model: models.Account,
           as: 'operator',
           attributes: ['id', 'email'],
+        },
+        {
+          model: models.Goal,
+          as: 'goal',
+          attributes: [
+            'id',
+            'targetAmount',
+            'currentAmount',
+            'currencyMoney',
+            'modality',
+          ],
         },
       ],
       order: [['createdAt', 'DESC'], ['id', 'DESC']],
@@ -262,6 +286,13 @@ export async function registerTransaction(request, response) {
   const reserveAccountId = Number(body.reserveAccountId);
   if (!Number.isInteger(reserveAccountId) || reserveAccountId < 1) {
     return warningResponse(response, 'reserveAccountId debe ser un entero válido.', {}, 400);
+  }
+
+  const goalId = body.goalId === undefined || body.goalId === null
+    ? null
+    : parseOptionalPositiveInteger(body.goalId);
+  if (body.goalId !== undefined && body.goalId !== null && goalId === null) {
+    return warningResponse(response, 'goalId debe ser un entero positivo o null.', {}, 400);
   }
 
   if (!['input', 'output'].includes(body.type)) {
@@ -348,6 +379,7 @@ export async function registerTransaction(request, response) {
     transactionData.amountNeto = normalizeAmount(body.amountNeto);
     transactionData.amountBrute = normalizeAmount(body.amountBrute);
     transactionData.operatorId = request.auth.accountId;
+    transactionData.goalId = goalId;
     if (parsedFile.file !== undefined) {
       transactionData.file = parsedFile.file;
     } else if (body.file === null) {
@@ -368,9 +400,49 @@ export async function registerTransaction(request, response) {
       }
 
       transactionData.reserveAccountId = reserveAccount.id;
+      let goal;
+      if (goalId !== null) {
+        goal = await models.Goal.findByPk(goalId, {
+          attributes: ['id', 'reserveAccountId', 'currencyMoney', 'modality', 'isActived'],
+          transaction: databaseTransaction,
+          lock: databaseTransaction.LOCK.UPDATE,
+        });
+        if (!goal) {
+          return { error: 'La meta indicada no existe.', statusCode: 404 };
+        }
+        if (!goal.isActived) {
+          return { error: 'La meta indicada está desactivada.', statusCode: 400 };
+        }
+        if (goal.reserveAccountId !== reserveAccount.id) {
+          return {
+            error: 'La meta debe pertenecer a la misma cuenta de reserva.',
+            statusCode: 400,
+          };
+        }
+        if (goal.currencyMoney !== transactionData.currencyMoney) {
+          return { error: 'La moneda de la transacción debe coincidir con la meta.', statusCode: 400 };
+        }
+        const transactionModality = transactionData.payData.method.trim().toLowerCase()
+          === 'efectivo'
+          ? 'Efectivo'
+          : 'Transferencia';
+        if (goal.modality !== transactionModality) {
+          return {
+            error: 'La modalidad de pago de la transacción debe coincidir con la meta.',
+            statusCode: 400,
+          };
+        }
+      }
+
       const transaction = await models.Transaction.create(transactionData, {
         transaction: databaseTransaction,
       });
+      if (goal && transactionData.type === 'input') {
+        await goal.increment(
+          { currentAmount: Number(transactionData.amountNeto) },
+          { transaction: databaseTransaction },
+        );
+      }
       return transaction;
     });
 

@@ -33,7 +33,7 @@ export async function listBankAccounts(request, response) {
       include: [{
         model: models.Bank,
         as: 'bank',
-        attributes: ['id', 'name'],
+        attributes: ['id', 'name', 'code'],
       }],
       order: [['id', 'ASC']],
       where: isActived === undefined || isActived === '*'
@@ -44,6 +44,7 @@ export async function listBankAccounts(request, response) {
     bankAccounts.forEach((account) => {
       account.dataValues.bankId = account.dataValues.bank.id;
       account.dataValues.bankName = account.dataValues.bank.name;
+      account.dataValues.bankCode = account.dataValues.bank.code;
       delete account.dataValues.bank;
     });
 

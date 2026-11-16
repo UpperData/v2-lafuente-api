@@ -5,6 +5,8 @@ import bankAccountsRouter from './bankAccounts.routes.js';
 import reserveAccountsRouter from './reserveAccounts.routes.js';
 import cashRouter from './cash.routes.js';
 import transactionsRouter from './transactions.routes.js';
+import goalsRouter from './goals.routes.js';
+import banksRouter from './banks.routes.js';
 
 const router = Router();
 
@@ -14,5 +16,7 @@ router.use('/bank-accounts', bankAccountsRouter);
 router.use('/clients', reserveAccountsRouter);
 router.use('/cash', cashRouter);
 router.use('/transactions', transactionsRouter);
+router.use('/goals', goalsRouter);
+router.use('/banks', banksRouter);
 
 export default router;
