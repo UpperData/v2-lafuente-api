@@ -22,7 +22,7 @@ export const sequelize = new Sequelize({
   username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   dialect: 'postgres',
-  logging: false,
+  logging: true,
   pool: {
     max: 10,
     min: 0,

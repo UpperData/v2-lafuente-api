@@ -42,6 +42,22 @@ BEGIN
       CURRENT_TIMESTAMP
     FROM public."reserveAccounts"
     ON CONFLICT ("currencyMoney") DO NOTHING;
+  ELSIF p_currency = 'Euro' THEN
+    INSERT INTO public."globalBalances" (
+      "currencyMoney",
+      "currentBalanceCash",
+      "currentBalanceTransfer",
+      "createdAt",
+      "updatedAt"
+    )
+    SELECT
+      'Euro',
+      COALESCE(SUM("currentBalanceCashEUR"), 0),
+      COALESCE(SUM("currentBalanceTransferEUR"), 0),
+      CURRENT_TIMESTAMP,
+      CURRENT_TIMESTAMP
+    FROM public."reserveAccounts"
+    ON CONFLICT ("currencyMoney") DO NOTHING;
   ELSE
     RAISE EXCEPTION 'Moneda no soportada para actualizar el saldo global.'
       USING ERRCODE = '23514';
@@ -71,7 +87,7 @@ BEGIN
   IF p_type NOT IN ('input', 'output')
     OR p_amount IS NULL
     OR p_amount <= 0
-    OR p_currency NOT IN ('Dolar', 'Bolivar')
+    OR p_currency NOT IN ('Dolar', 'Bolivar', 'Euro')
   THEN
     RAISE EXCEPTION 'Datos de transacción inválidos para actualizar el saldo global.'
       USING ERRCODE = '23514';
@@ -104,11 +120,21 @@ BEGIN
     SET "currentBalanceCash" = "currentBalanceCash" + v_balance_delta,
         "updatedAt" = CURRENT_TIMESTAMP
     WHERE "currencyMoney" = 'Bolivar';
-  ELSE
+  ELSIF p_currency = 'Bolivar' THEN
     UPDATE public."globalBalances"
     SET "currentBalanceTransfer" = "currentBalanceTransfer" + v_balance_delta,
         "updatedAt" = CURRENT_TIMESTAMP
     WHERE "currencyMoney" = 'Bolivar';
+  ELSIF p_currency = 'Euro' AND v_payment_method = 'efectivo' THEN
+    UPDATE public."globalBalances"
+    SET "currentBalanceCash" = "currentBalanceCash" + v_balance_delta,
+        "updatedAt" = CURRENT_TIMESTAMP
+    WHERE "currencyMoney" = 'Euro';
+  ELSE
+    UPDATE public."globalBalances"
+    SET "currentBalanceTransfer" = "currentBalanceTransfer" + v_balance_delta,
+        "updatedAt" = CURRENT_TIMESTAMP
+    WHERE "currencyMoney" = 'Euro';
   END IF;
 
   IF NOT FOUND THEN
@@ -183,6 +209,25 @@ SELECT
   'Bolivar',
   COALESCE(SUM("currentBalanceCashVES"), 0),
   COALESCE(SUM("currentBalanceTransferVES"), 0),
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM public."reserveAccounts"
+ON CONFLICT ("currencyMoney") DO UPDATE
+SET "currentBalanceCash" = EXCLUDED."currentBalanceCash",
+    "currentBalanceTransfer" = EXCLUDED."currentBalanceTransfer",
+    "updatedAt" = CURRENT_TIMESTAMP;
+
+INSERT INTO public."globalBalances" (
+  "currencyMoney",
+  "currentBalanceCash",
+  "currentBalanceTransfer",
+  "createdAt",
+  "updatedAt"
+)
+SELECT
+  'Euro',
+  COALESCE(SUM("currentBalanceCashEUR"), 0),
+  COALESCE(SUM("currentBalanceTransferEUR"), 0),
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 FROM public."reserveAccounts"

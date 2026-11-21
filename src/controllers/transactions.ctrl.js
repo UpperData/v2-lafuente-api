@@ -299,8 +299,8 @@ export async function registerTransaction(request, response) {
     return warningResponse(response, 'type debe ser input o output.', {}, 400);
   }
 
-  if (!['Dolar', 'Bolivar'].includes(body.currencyMoney)) {
-    return warningResponse(response, 'currencyMoney debe ser Dolar o Bolivar.', {}, 400);
+  if (!['Dolar', 'Bolivar', 'Euro'].includes(body.currencyMoney)) {
+    return warningResponse(response, 'currencyMoney debe ser Dolar, Bolivar o Euro.', {}, 400);
   }
 
   if (
@@ -343,6 +343,40 @@ export async function registerTransaction(request, response) {
     return warningResponse(
       response,
       'payData.method es obligatorio para identificar el saldo de efectivo o transferencia.',
+      {},
+      400,
+    );
+  }
+
+  const destinationAccount = body.payData.destinationAccount;
+  if (
+    destinationAccount !== undefined
+    && destinationAccount !== null
+    && (typeof destinationAccount !== 'object' || Array.isArray(destinationAccount))
+  ) {
+    return warningResponse(response, 'payData.destinationAccount debe ser un objeto.', {}, 400);
+  }
+
+  const rawBankAccountId = destinationAccount?.bankAccountId;
+  const bankAccountId = rawBankAccountId === undefined
+    || rawBankAccountId === null
+    ? null
+    : parseOptionalPositiveInteger(rawBankAccountId);
+  const isCashPayment = body.payData.method.trim().toLowerCase() === 'efectivo';
+  if (rawBankAccountId !== undefined
+    && rawBankAccountId !== null
+    && bankAccountId === null) {
+    return warningResponse(
+      response,
+      'payData.destinationAccount.bankAccountId debe ser un entero positivo o null.',
+      {},
+      400,
+    );
+  }
+  if (!isCashPayment && bankAccountId === null) {
+    return warningResponse(
+      response,
+      'payData.destinationAccount.bankAccountId es obligatorio cuando el método de pago no es efectivo.',
       {},
       400,
     );
@@ -400,6 +434,26 @@ export async function registerTransaction(request, response) {
       }
 
       transactionData.reserveAccountId = reserveAccount.id;
+      if (bankAccountId !== null) {
+        const bankAccount = await models.BankAccount.findByPk(bankAccountId, {
+          attributes: ['id', 'currencyMoney', 'isActived'],
+          transaction: databaseTransaction,
+          lock: databaseTransaction.LOCK.UPDATE,
+        });
+        if (!bankAccount) {
+          return { error: 'La cuenta bancaria indicada no existe.', statusCode: 404 };
+        }
+        if (!bankAccount.isActived) {
+          return { error: 'La cuenta bancaria indicada está desactivada.', statusCode: 400 };
+        }
+        if (bankAccount.currencyMoney !== transactionData.currencyMoney) {
+          return {
+            error: 'La moneda de la cuenta bancaria debe coincidir con la transacción.',
+            statusCode: 400,
+          };
+        }
+      }
+
       let goal;
       if (goalId !== null) {
         goal = await models.Goal.findByPk(goalId, {
@@ -413,12 +467,12 @@ export async function registerTransaction(request, response) {
         if (!goal.isActived) {
           return { error: 'La meta indicada está desactivada.', statusCode: 400 };
         }
-        if (goal.reserveAccountId !== reserveAccount.id) {
+/*         if (goal.reserveAccountId !== reserveAccount.id) {
           return {
             error: 'La meta debe pertenecer a la misma cuenta de reserva.',
             statusCode: 400,
           };
-        }
+        } */
         if (goal.currencyMoney !== transactionData.currencyMoney) {
           return { error: 'La moneda de la transacción debe coincidir con la meta.', statusCode: 400 };
         }
@@ -433,7 +487,7 @@ export async function registerTransaction(request, response) {
           };
         }
       }
-
+      
       const transaction = await models.Transaction.create(transactionData, {
         transaction: databaseTransaction,
       });
@@ -442,6 +496,13 @@ export async function registerTransaction(request, response) {
           { currentAmount: Number(transactionData.amountNeto) },
           { transaction: databaseTransaction },
         );
+        // si la meta se cumple, se actualiza su estado a "Cumplida" y se inactiva la meta
+        if (Number(goal.currentAmount) + Number(transactionData.amountNeto) >= Number(goal.targetAmount)) {
+          await goal.update(
+            { condition: 'Cumplida', isActived: false },
+            { transaction: databaseTransaction },
+          );
+        }
       }
       return transaction;
     });

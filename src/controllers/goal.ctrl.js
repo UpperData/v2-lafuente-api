@@ -93,7 +93,7 @@ function validateGoalBody(body, { creating = false } = {}) {
       updates.targetAmount = normalizeAmount(value);
     } else if (field === 'currencyMoney') {
       if (!supportedCurrencies.includes(value)) {
-        return { error: 'currencyMoney debe ser Dolar o Bolivar.' };
+        return { error: 'currencyMoney debe ser Dolar, Bolivar o Euro.' };
       }
       updates.currencyMoney = value;
     } else if (field === 'modality') {

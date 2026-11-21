@@ -15,6 +15,8 @@ export default function defineReserveAccount(sequelize) {
     currentBalanceTransferUSD: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
     currentBalanceCashVES: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
     currentBalanceTransferVES: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
+    currentBalanceCashEUR: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
+    currentBalanceTransferEUR: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
   }, {
     tableName: 'reserveAccounts',
     timestamps: true,

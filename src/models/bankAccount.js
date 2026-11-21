@@ -18,7 +18,12 @@ export default function defineBankAccount(sequelize) {
       type: DataTypes.ENUM('Dolar', 'Bolivar','Euro'),
       allowNull: false,
       defaultValue: 'Dolar',
-    }
+    },
+    balance: {
+      type: DataTypes.DECIMAL(18, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
   }, {
     tableName: 'bankAccount',
     timestamps: true,

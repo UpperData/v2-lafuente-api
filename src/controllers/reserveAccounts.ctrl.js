@@ -81,6 +81,8 @@ export async function listClients(_request, response) {
         'currentBalanceTransferUSD',
         'currentBalanceCashVES',
         'currentBalanceTransferVES',
+        'currentBalanceCashEUR',
+        'currentBalanceTransferEUR',
         'createdAt',
         'updatedAt',
       ],
