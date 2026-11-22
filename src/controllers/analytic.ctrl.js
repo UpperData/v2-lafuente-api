@@ -18,6 +18,7 @@ export const getIncomingTransactions = async (request, response) => {
       const transaction = await models.Transaction.findAll({
         attributes:{exclude:['file', 'payData', 'comissions']},
         where: {
+          isActived: true,
           [Op.or]: [
             {
               payData: {
@@ -41,6 +42,11 @@ export const getIncomingTransactions = async (request, response) => {
             model: models.Account,
             as: 'operator',
             attributes: ['id', 'person'],
+          },
+          {
+            model: models.ReserveAccount,
+            as: 'reserveAccount',
+            attributes: ['id', 'firstName', 'lastName'],
           }
         ],
       });
@@ -56,13 +62,25 @@ export const getIncomingTransactions = async (request, response) => {
           operatorName,
         };
       });
+      // agregar nombre del cliente(reserveAccount.firstName, reserveAccount.lastName) de la cuenta de reserva
+      const transactionsWithOperatorNameAndReserveAccount = transactionsWithOperatorName.map((tx) => {
+        const transactionData = tx;
+        const reserveAccount = transactionData.reserveAccount;
+        const reserveAccountName = reserveAccount
+          ? [reserveAccount.firstName, reserveAccount.lastName].filter(Boolean).join(' ')
+          : null;
+          return {
+            ...transactionData,
+            reserveAccountName,
+          };
+      });
       // eliminar la propiedad operator del objeto transaction
       transactionsWithOperatorName.forEach((tx) => {
         delete tx.operator;
       });
       return {
         ...bankAccount.toJSON(),
-        transaction: transactionsWithOperatorName,
+        transaction: transactionsWithOperatorNameAndReserveAccount,
       };
     }));
 
