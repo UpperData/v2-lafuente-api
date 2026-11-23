@@ -8,12 +8,14 @@ import transactionsRouter from './transactions.routes.js';
 import goalsRouter from './goals.routes.js';
 import banksRouter from './banks.routes.js';
 import analyticRouter from './analytic.route.js';
+import balanceRouter from './balance.routes.js';
 
 const router = Router();
 
 router.use('/auth', authRouter);
 router.use('/users', userRouter);
 router.use('/analytic', analyticRouter);
+router.use('/balance', balanceRouter);
 router.use('/bank-accounts', bankAccountsRouter);
 router.use('/clients', reserveAccountsRouter);
 router.use('/cash', cashRouter);

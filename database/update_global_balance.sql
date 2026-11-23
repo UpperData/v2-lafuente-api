@@ -1,6 +1,23 @@
 BEGIN;
 
-DROP TRIGGER IF EXISTS trg_update_global_balance ON public.transactions;
+DO $block$
+DECLARE
+  v_trigger record;
+BEGIN
+  FOR v_trigger IN
+    SELECT t.tgname
+    FROM pg_trigger AS t
+    JOIN pg_proc AS p ON p.oid = t.tgfoid
+    JOIN pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE t.tgrelid = 'public.transactions'::regclass
+      AND NOT t.tgisinternal
+      AND n.nspname = 'public'
+      AND p.proname = 'update_global_balance'
+  LOOP
+    EXECUTE format('DROP TRIGGER %I ON public.transactions', v_trigger.tgname);
+  END LOOP;
+END;
+$block$;
 
 CREATE OR REPLACE FUNCTION public.ensure_global_balance(p_currency text)
 RETURNS void
@@ -154,24 +171,65 @@ LANGUAGE plpgsql
 COST 100
 VOLATILE
 AS $BODY$
+DECLARE
+  v_was_active boolean := false;
+  v_is_active boolean := false;
+  v_old_method text;
+  v_new_method text;
+  v_old_is_cash boolean := false;
+  v_new_is_cash boolean := false;
 BEGIN
-  IF TG_OP = 'UPDATE' THEN
+  IF TG_OP IN ('UPDATE', 'DELETE') THEN
+    v_was_active := COALESCE(OLD."isActived", false);
+    v_old_method := COALESCE(OLD."payData"->>'method', 'Transferencia');
+    v_old_is_cash := lower(trim(v_old_method)) = 'efectivo';
+  END IF;
+
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    v_is_active := COALESCE(NEW."isActived", false);
+    v_new_method := COALESCE(NEW."payData"->>'method', 'Transferencia');
+    v_new_is_cash := lower(trim(v_new_method)) = 'efectivo';
+  END IF;
+
+  IF NOT v_was_active AND NOT v_is_active THEN
+    IF TG_OP = 'DELETE' THEN
+      RETURN OLD;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF v_was_active AND v_is_active
+    AND OLD."currencyMoney" IS NOT DISTINCT FROM NEW."currencyMoney"
+    AND OLD."amountNeto" IS NOT DISTINCT FROM NEW."amountNeto"
+    AND OLD.type IS NOT DISTINCT FROM NEW.type
+    AND v_old_is_cash = v_new_is_cash
+  THEN
+    RETURN NEW;
+  END IF;
+
+  IF v_was_active THEN
     PERFORM public.adjust_global_balance(
       OLD."currencyMoney"::text,
       OLD."amountNeto",
       OLD.type::text,
       true,
-      COALESCE(OLD."payData"->>'method', 'Transferencia')
+      v_old_method
     );
   END IF;
 
-  PERFORM public.adjust_global_balance(
-    NEW."currencyMoney"::text,
-    NEW."amountNeto",
-    NEW.type::text,
-    false,
-    COALESCE(NEW."payData"->>'method', 'Transferencia')
-  );
+  IF v_is_active THEN
+    PERFORM public.adjust_global_balance(
+      NEW."currencyMoney"::text,
+      NEW."amountNeto",
+      NEW.type::text,
+      false,
+      v_new_method
+    );
+  END IF;
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
 
   RETURN NEW;
 END;
@@ -237,7 +295,7 @@ SET "currentBalanceCash" = EXCLUDED."currentBalanceCash",
     "updatedAt" = CURRENT_TIMESTAMP;
 
 CREATE TRIGGER trg_update_global_balance
-BEFORE INSERT OR UPDATE ON public.transactions
+BEFORE INSERT OR UPDATE OR DELETE ON public.transactions
 FOR EACH ROW
 EXECUTE FUNCTION public.update_global_balance();
 
